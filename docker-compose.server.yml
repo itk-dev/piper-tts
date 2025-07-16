@@ -1,0 +1,32 @@
+networks:
+  frontend:
+    external: true
+
+services:
+  api:
+    build: 
+      dockerfile: Dockerfile
+    networks:
+      - frontend
+    ports:
+      - "8000"
+    environment:
+      API_KEY: ${API_KEY}
+      CUDA_ENABLED: ${CUDA_ENABLED}
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
+      LANGUAGE_VOICE_MAPPING: ${LANGUAGE_VOICE_MAPPING:-''}
+    labels:
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-http.rule=Host(`${COMPOSE_SERVER_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-http.entrypoints=web"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_SERVER_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
