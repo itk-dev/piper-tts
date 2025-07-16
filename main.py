@@ -85,42 +85,27 @@ async def health():
 
     return JSONResponse(content=status, status_code=200)
 
-
-# Voice mapping from OpenAI voices to available Piper voices
-# Try to load from environment variable, fall back to default mapping if not available
-default_voice = "./voices/da_DK-talesyntese-medium.onnx"
+# Language to voice mapping
+# Map language codes to the appropriate voice model
 try:
-    voice_mapping_str = os.environ.get("VOICE_MAPPING")
-    if voice_mapping_str:
-        VOICE_MAPPING = json.loads(voice_mapping_str)
+    language_mapping_str = os.environ.get("LANGUAGE_VOICE_MAPPING")
+    if language_mapping_str:
+        LANGUAGE_VOICE_MAPPING = json.loads(language_mapping_str)
     else:
-        VOICE_MAPPING = {
-            "alloy": default_voice,
-            "echo": default_voice,
-            "fable": default_voice,
-            "onyx": default_voice,
-            "nova": default_voice,
-            "shimmer": default_voice,
+        LANGUAGE_VOICE_MAPPING = {
+            "da": "./voices/da_DK-talesyntese-medium.onnx",
+            "en": "./voices/en_US-amy-medium.onnx",
+            "gb": "./voices/en_GB-alan-medium.onnx"
         }
 except json.JSONDecodeError:
     # If JSON parsing fails, use default mapping
-    print("Error parsing VOICE_MAPPING from environment, using defaults")
-    VOICE_MAPPING = {
-        "alloy": default_voice,
-        "echo": default_voice,
-        "fable": default_voice,
-        "onyx": default_voice,
-        "nova": default_voice,
-        "shimmer": default_voice,
+    print("Error parsing LANGUAGE_VOICE_MAPPING from environment, using defaults")
+    LANGUAGE_VOICE_MAPPING = {
+        "da": "./voices/da_DK-talesyntese-medium.onnx",
+        "en": "./voices/en_US-amy-medium.onnx",
+        "gb": "./voices/en_GB-alan-medium.onnx"
     }
 
-# Language to voice mapping
-# Map language codes to the appropriate voice model
-LANGUAGE_VOICE_MAPPING = {
-    "da": "./voices/da_DK-talesyntese-medium.onnx",
-    "en": "./voices/en_US-amy-medium.onnx",
-    "gb": "./voices/en_GB-alan-medium.onnx"
-}
 
 # Default language if detection fails
 DEFAULT_LANGUAGE = "da"
@@ -129,14 +114,14 @@ DEFAULT_LANGUAGE = "da"
 @app.post("/audio/speech")
 async def create_speech(
     model: str = Body(..., description="This has no effect"),
-    voice: str = Body(..., description="The voice to use for the speech"),
+    voice: str = Body(..., description="This has no effect"),
     input: str = Body(..., description="The text to generate speech for"),
     response_format: str = Body(
         "mp3", description="The format of the audio response (mp3 or wav)"
     ),
     speed: float = Body(1.0, description="The speed of the generated audio"),
     auto_detect_language: bool = Body(
-        False, description="Automatically detect language and use appropriate voice"
+        True, description="Automatically detect language and use appropriate voice"
     ),
     token: str = Depends(get_bearer_token, use_cache=False),
 ):
@@ -150,19 +135,19 @@ async def create_speech(
             detected_lang = detect(input)
             # Use the detected language voice if available, otherwise fallback to default
             voice_path = LANGUAGE_VOICE_MAPPING.get(
-                detected_lang, LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE, default_voice)
+                detected_lang, LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
             )
             print(f"Detected language: {detected_lang}, using voice: {voice_path}")
         except Exception as e:
             # If language detection fails, use the requested voice
-            voice_path = VOICE_MAPPING.get(
-                voice.lower(), VOICE_MAPPING.get("alloy", default_voice)
+            voice_path = LANGUAGE_VOICE_MAPPING.get(
+                voice.lower(), LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
             )
             print(f"Language detection failed: {str(e)}, using requested voice")
     else:
         # Use the voice specified in the request
-        voice_path = VOICE_MAPPING.get(
-            voice.lower(), VOICE_MAPPING.get("alloy", default_voice)
+        voice_path = LANGUAGE_VOICE_MAPPING.get(
+            voice.lower(), LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
         )
 
     # Configure synthesis parameters

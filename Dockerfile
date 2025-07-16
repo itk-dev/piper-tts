@@ -1,4 +1,3 @@
-
 FROM python:3.13-slim
 
 # Set working directory
@@ -12,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libasound2-dev \
     portaudio19-dev \
     python3-pyaudio \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -20,7 +20,8 @@ COPY pyproject.toml ./
 
 # Install dependencies
 RUN pip install --upgrade pip \
-    && pip install .
+    && pip install . \
+    && pip install audioop-lts
 
 COPY . .
 

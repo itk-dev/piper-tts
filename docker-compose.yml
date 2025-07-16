@@ -19,7 +19,7 @@ services:
       API_KEY: ${API_KEY:-CHANGE_ME}
       CUDA_ENABLED: ${CUDA_ENABLED:-false}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
-      VOICE_MAPPING: ${VOICE_MAPPING}
+      LANGUAGE_VOICE_MAPPING: ${LANGUAGE_VOICE_MAPPING:-''}
     volumes:
       - ./:/app
     labels:
