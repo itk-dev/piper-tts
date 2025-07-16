@@ -1,0 +1,10 @@
+.env*
+**/__pycache__/
+.idea
+.venv
+.gitignore
+.git
+Dockerfile
+.dockerignore
+*.wav
+*.mp3

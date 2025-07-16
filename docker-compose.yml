@@ -1,0 +1,31 @@
+# itk-version: 3.2.1
+networks:
+  frontend:
+    external: true
+  app:
+    driver: bridge
+    internal: false
+
+services:
+  api:
+    build: 
+      dockerfile: Dockerfile
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    networks:
+      - frontend
+    ports:
+      - "8000"
+    environment:
+      API_KEY: ${API_KEY:-CHANGE_ME}
+      CUDA_ENABLED: ${CUDA_ENABLED:-false}
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
+      VOICE_MAPPING: ${VOICE_MAPPING}
+    volumes:
+      - ./:/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_DOMAIN}`)"
+    #      HTTPS config - uncomment to enable redirect from :80 to :443
+    #      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.middlewares=redirect-to-https"
+    #      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
