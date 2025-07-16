@@ -85,6 +85,7 @@ async def health():
 
     return JSONResponse(content=status, status_code=200)
 
+
 # Language to voice mapping
 # Map language codes to the appropriate voice model
 try:
@@ -95,7 +96,7 @@ try:
         LANGUAGE_VOICE_MAPPING = {
             "da": "./voices/da_DK-talesyntese-medium.onnx",
             "en": "./voices/en_US-amy-medium.onnx",
-            "gb": "./voices/en_GB-alan-medium.onnx"
+            "gb": "./voices/en_GB-alan-medium.onnx",
         }
 except json.JSONDecodeError:
     # If JSON parsing fails, use default mapping
@@ -103,12 +104,13 @@ except json.JSONDecodeError:
     LANGUAGE_VOICE_MAPPING = {
         "da": "./voices/da_DK-talesyntese-medium.onnx",
         "en": "./voices/en_US-amy-medium.onnx",
-        "gb": "./voices/en_GB-alan-medium.onnx"
+        "gb": "./voices/en_GB-alan-medium.onnx",
     }
 
 
 # Default language if detection fails
 DEFAULT_LANGUAGE = "da"
+
 
 # OpenAI TTS endpoint that matches their API
 @app.post("/audio/speech")
