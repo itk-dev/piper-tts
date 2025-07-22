@@ -14,6 +14,7 @@ import io
 import wave
 from piper import PiperVoice, SynthesisConfig
 import os
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Import pydub for MP3 conversion
 from pydub import AudioSegment
@@ -71,6 +72,14 @@ def get_bearer_token(
         raise HTTPException(status_code=403, detail="Could not validate credentials")
 
     return credentials.credentials
+
+
+# Initialize Prometheus monitoring
+Instrumentator().instrument(app).expose(
+    app,
+    include_in_schema=False,
+    dependencies=[Depends(get_bearer_token, use_cache=False)],
+)
 
 
 @app.get("/", include_in_schema=False)
@@ -179,25 +188,18 @@ async def create_speech(
         if response_format.lower() == "mp3":
             # Convert WAV to MP3 using pydub
             audio = AudioSegment.from_wav(wav_buffer)
-
-            # Create a new buffer for the MP3 data
             mp3_buffer = io.BytesIO()
-
-            # Export as MP3
             audio.export(mp3_buffer, format="mp3")
 
             # Reset the MP3 buffer position
             mp3_buffer.seek(0)
 
-            # Return the MP3 audio as a streaming response
             return StreamingResponse(
                 mp3_buffer,
                 media_type="audio/mpeg",
                 headers={"Content-Disposition": f"attachment; filename=speech.mp3"},
             )
         else:
-            # Return WAV format (reset buffer position first)
-            wav_buffer.seek(0)
             return StreamingResponse(
                 wav_buffer,
                 media_type="audio/wav",
