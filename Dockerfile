@@ -12,16 +12,16 @@ RUN apt-get update && apt-get install -y \
     portaudio19-dev \
     python3-pyaudio \
     build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Copy project metadata and lock file
 COPY pyproject.toml ./
 
 # Install dependencies
 RUN pip install --upgrade pip \
-    && pip install . \
-    && pip install audioop-lts
+ && pip install . \
+ && pip install audioop-lts
 
 COPY . .
 
