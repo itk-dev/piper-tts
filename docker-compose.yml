@@ -20,6 +20,7 @@ services:
       CUDA_ENABLED: ${CUDA_ENABLED:-false}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
       VOICES: ${VOICES}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
     volumes:
       - ./:/app
     labels:

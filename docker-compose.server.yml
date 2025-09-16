@@ -15,6 +15,7 @@ services:
       CUDA_ENABLED: ${CUDA_ENABLED}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
       VOICES: ${VOICES}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=frontend"

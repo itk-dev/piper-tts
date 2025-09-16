@@ -1,4 +1,6 @@
 import json
+import logging
+import sys
 from langdetect import detect, detect_langs
 
 from fastapi import (
@@ -19,12 +21,23 @@ from prometheus_fastapi_instrumentator import Instrumentator
 # Import pydub for MP3 conversion
 from pydub import AudioSegment
 
-# Start the API
-app = FastAPI()
-
 # configure CORS
 from fastapi.middleware.cors import CORSMiddleware
 
+# Configure logging to output to stdout/stderr
+logging.basicConfig(
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # This sends logs to stdout
+    ]
+)
+
+# Create a logger for your application
+logger = logging.getLogger(__name__)
+
+# Start the API
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins="*",
@@ -111,11 +124,12 @@ def detect_language(text):
         # Get all possible languages with confidence scores
         possible_langs = detect_langs(text)
 
-        print(f"Possible language: {possible_langs}")
+        logger.info(f"Possible languages detected: {possible_langs}")
 
         # Otherwise return the highest confidence language
         return detect(text)
     except:
+        logger.warning(f"Language detection failed: {e}, using default language: {DEFAULT_LANGUAGE}")
         return DEFAULT_LANGUAGE
 
 
@@ -180,17 +194,17 @@ async def create_speech(
             if not voice_path:
                 voice_path = LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
 
-            print(f"Using voice: {voice_path}")
+            logger.info(f"Auto-detected language: {detected_lang}, using voice: {voice_path}")
         except Exception as e:
             # If language detection fails, use the requested voice
             voice_path = LANGUAGE_VOICE_MAPPING.get(
                 voice.lower(), LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
             )
-            print(f"Language detection failed: {str(e)}, using requested voice")
+            logger.error(f"Language detection failed: {str(e)}, using requested voice: {voice_path}")
     else:
         voice_path = None
 
-    print(f"Using voice: {voice_path}")
+    logger.info(f"Processing TTS request with voice: {voice_path}, speed: {speed}, format: {response_format}")
 
     # Configure synthesis parameters
     syn_config = SynthesisConfig(
@@ -204,6 +218,7 @@ async def create_speech(
     try:
         # Load the voice model
         voice_model = PiperVoice.load(voice_path, use_cuda=CUDA_ENABLED)
+        logger.debug("Voice model loaded successfully")
 
         # Create an in-memory file-like object to store the WAV audio
         wav_buffer = io.BytesIO()
@@ -231,6 +246,7 @@ async def create_speech(
                 headers={"Content-Disposition": f"attachment; filename=speech.mp3"},
             )
         else:
+            logger.error(f"Speech generation failed: {str(e)}")
             return StreamingResponse(
                 wav_buffer,
                 media_type="audio/wav",
