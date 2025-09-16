@@ -5,7 +5,7 @@ networks:
 services:
   api:
     build: 
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.gpu
     networks:
       - frontend
     expose:
@@ -14,7 +14,7 @@ services:
       API_KEY: ${API_KEY}
       CUDA_ENABLED: ${CUDA_ENABLED}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
-      LANGUAGE_VOICE_MAPPING: ${LANGUAGE_VOICE_MAPPING:-''}
+      VOICES: ${VOICES}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=frontend"

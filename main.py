@@ -1,5 +1,5 @@
 import json
-from langdetect import detect
+from langdetect import detect, detect_langs
 
 from fastapi import (
     FastAPI,
@@ -82,6 +82,43 @@ Instrumentator().instrument(app).expose(
 )
 
 
+# Language to voice mapping
+# Load voice mapping from the environment
+voices_str = os.environ.get("VOICES")
+if voices_str:
+    voices_config = json.loads(voices_str)
+    # Convert array to lookup dictionaries
+    LANGUAGE_VOICE_MAPPING = {
+        voice["language"]: voice["path"] for voice in voices_config
+    }
+    VOICE_ID_MAPPING = {voice["id"]: voice["path"] for voice in voices_config}
+    # Remove path from voices before exposing to API
+    AVAILABLE_VOICES = [
+        {k: v for k, v in voice.items() if k != "path"} for voice in voices_config
+    ]
+else:
+    raise Exception("VOICES environment variable is not set")
+
+# Default language if detection fails
+DEFAULT_LANGUAGE = "da"
+
+
+def detect_language(text):
+    """
+    Detect language with Danish prioritization over Norwegian
+    """
+    try:
+        # Get all possible languages with confidence scores
+        possible_langs = detect_langs(text)
+
+        print(f"Possible language: {possible_langs}")
+
+        # Otherwise return the highest confidence language
+        return detect(text)
+    except:
+        return DEFAULT_LANGUAGE
+
+
 @app.get("/", include_in_schema=False)
 def root():
     """Redirect to the API documentation."""
@@ -95,37 +132,25 @@ async def health():
     return JSONResponse(content=status, status_code=200)
 
 
-# Language to voice mapping
-# Map language codes to the appropriate voice model
-try:
-    language_mapping_str = os.environ.get("LANGUAGE_VOICE_MAPPING")
-    if language_mapping_str:
-        LANGUAGE_VOICE_MAPPING = json.loads(language_mapping_str)
-    else:
-        LANGUAGE_VOICE_MAPPING = {
-            "da": "./voices/da_DK-talesyntese-medium.onnx",
-            "en": "./voices/en_US-amy-medium.onnx",
-            "gb": "./voices/en_GB-alan-medium.onnx",
-        }
-except json.JSONDecodeError:
-    # If JSON parsing fails, use default mapping
-    print("Error parsing LANGUAGE_VOICE_MAPPING from environment, using defaults")
-    LANGUAGE_VOICE_MAPPING = {
-        "da": "./voices/da_DK-talesyntese-medium.onnx",
-        "en": "./voices/en_US-amy-medium.onnx",
-        "gb": "./voices/en_GB-alan-medium.onnx",
-    }
+@app.get("/audio/voices")
+async def list_voices(token: str = Depends(get_bearer_token, use_cache=False)):
+    """
+    List available voices for text-to-speech generation.
+    Compatible with OpenAI's TTS API.
+    """
+    return {"voices": AVAILABLE_VOICES}
 
 
-# Default language if detection fails
-DEFAULT_LANGUAGE = "da"
+@app.get("/audio/models")
+async def list_models(token: str = Depends(get_bearer_token, use_cache=False)):
+    return {"models": [{"id": "piper-tts-1"}]}
 
 
 # OpenAI TTS endpoint that matches their API
 @app.post("/audio/speech")
 async def create_speech(
     model: str = Body(..., description="This has no effect"),
-    voice: str = Body(..., description="This has no effect"),
+    voice: str = Body(..., description="Select voice to use"),
     input: str = Body(..., description="The text to generate speech for"),
     response_format: str = Body(
         "mp3", description="The format of the audio response (mp3 or wav)"
@@ -143,12 +168,19 @@ async def create_speech(
     # If auto-detect is enabled, try to detect the language and use the appropriate voice
     if auto_detect_language:
         try:
-            detected_lang = detect(input)
-            # Use the detected language voice if available, otherwise fallback to default
-            voice_path = LANGUAGE_VOICE_MAPPING.get(
-                detected_lang, LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
-            )
-            print(f"Detected language: {detected_lang}, using voice: {voice_path}")
+            detected_lang = detect_language(input)
+            # First, try the detected language
+            voice_path = LANGUAGE_VOICE_MAPPING.get(detected_lang)
+
+            # If not found, try the voice parameter as ID or language
+            if not voice_path:
+                voice_path = VOICE_ID_MAPPING.get(voice.lower()) or LANGUAGE_VOICE_MAPPING.get(voice.lower())
+
+            # If still not found, use default
+            if not voice_path:
+                voice_path = LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
+
+            print(f"Using voice: {voice_path}")
         except Exception as e:
             # If language detection fails, use the requested voice
             voice_path = LANGUAGE_VOICE_MAPPING.get(
@@ -156,10 +188,9 @@ async def create_speech(
             )
             print(f"Language detection failed: {str(e)}, using requested voice")
     else:
-        # Use the voice specified in the request
-        voice_path = LANGUAGE_VOICE_MAPPING.get(
-            voice.lower(), LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
-        )
+        voice_path = None
+
+    print(f"Using voice: {voice_path}")
 
     # Configure synthesis parameters
     syn_config = SynthesisConfig(
