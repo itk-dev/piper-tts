@@ -6,6 +6,10 @@ services:
   api:
     build: 
       dockerfile: Dockerfile.gpu
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
     networks:
       - frontend
     expose:
