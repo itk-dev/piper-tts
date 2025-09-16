@@ -18,7 +18,11 @@ COPY pyproject.toml ./
 
 # Install dependencies
 RUN pip install --upgrade pip \
-&& pip install .
+ && pip install .
+
+# Uninstall any existing onnxruntime packages to avoid conflicts
+RUN pip uninstall -y onnxruntime onnxruntime-gpu || true
+RUN pip install onnxruntime-gpu==1.22.0
 
 COPY . .
 
