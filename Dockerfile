@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
@@ -20,8 +20,7 @@ COPY pyproject.toml ./
 
 # Install dependencies
 RUN pip install --upgrade pip \
- && pip install . \
- && pip install audioop-lts
+ && pip install .
 
 COPY . .
 

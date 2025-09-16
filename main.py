@@ -27,10 +27,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # Configure logging to output to stdout/stderr
 logging.basicConfig(
     level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)  # This sends logs to stdout
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],  # This sends logs to stdout
 )
 
 # Create a logger for your application
@@ -129,7 +127,9 @@ def detect_language(text):
         # Otherwise return the highest confidence language
         return detect(text)
     except:
-        logger.warning(f"Language detection failed: {e}, using default language: {DEFAULT_LANGUAGE}")
+        logger.warning(
+            f"Language detection failed: {e}, using default language: {DEFAULT_LANGUAGE}"
+        )
         return DEFAULT_LANGUAGE
 
 
@@ -188,23 +188,31 @@ async def create_speech(
 
             # If not found, try the voice parameter as ID or language
             if not voice_path:
-                voice_path = VOICE_ID_MAPPING.get(voice.lower()) or LANGUAGE_VOICE_MAPPING.get(voice.lower())
+                voice_path = VOICE_ID_MAPPING.get(
+                    voice.lower()
+                ) or LANGUAGE_VOICE_MAPPING.get(voice.lower())
 
             # If still not found, use default
             if not voice_path:
                 voice_path = LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
 
-            logger.info(f"Auto-detected language: {detected_lang}, using voice: {voice_path}")
+            logger.info(
+                f"Auto-detected language: {detected_lang}, using voice: {voice_path}"
+            )
         except Exception as e:
             # If language detection fails, use the requested voice
             voice_path = LANGUAGE_VOICE_MAPPING.get(
                 voice.lower(), LANGUAGE_VOICE_MAPPING.get(DEFAULT_LANGUAGE)
             )
-            logger.error(f"Language detection failed: {str(e)}, using requested voice: {voice_path}")
+            logger.error(
+                f"Language detection failed: {str(e)}, using requested voice: {voice_path}"
+            )
     else:
         voice_path = None
 
-    logger.info(f"Processing TTS request with voice: {voice_path}, speed: {speed}, format: {response_format}")
+    logger.info(
+        f"Processing TTS request with voice: {voice_path}, speed: {speed}, format: {response_format}"
+    )
 
     # Configure synthesis parameters
     syn_config = SynthesisConfig(
