@@ -40,7 +40,6 @@ tasks:
   ####
   prod:build:
     desc: Build and push docker images
-    deps: [prod:build:cpu, prod:build:gpu]
     cmds:
       - task: prod:build:cpu
       - task: prod:build:gpu
