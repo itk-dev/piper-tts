@@ -8,3 +8,4 @@ Dockerfile
 .dockerignore
 *.wav
 *.mp3
+docker-compose*

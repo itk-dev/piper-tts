@@ -1,0 +1,65 @@
+version: '3'
+
+# https://taskfile.dev/usage/#env-files
+dotenv: [ '.env.local', '.env' ]
+
+vars:
+  # https://taskfile.dev/reference/templating/
+  BASE_URL: '{{.TASK_BASE_URL | default .COMPOSE_SERVER_DOMAIN | default .COMPOSE_DOMAIN }}'
+  DOCKER_COMPOSE: '{{ .TASK_DOCKER_COMPOSE | default "itkdev-docker-compose" }}'
+  IMAGE_NAME: 'ghcr.io/aarhusai/piper-tts'
+  VERSION: '0.1.0'
+
+tasks:
+  default:
+    desc: 'List all tasks'
+    cmds:
+      - task --list-all
+    silent: true
+
+  open:
+    desc: "Open-webui in the browser"
+    cmds:
+      - open http://{{ .BASE_URL }}
+    silent: true
+
+  copy:config:
+    desc: "Copy config file from example, if it does not exist"
+    cmds:
+      - cp .env.example .env || true
+    silent: true
+
+  build:
+    desc: "Build container with newest requirements"
+    cmds:
+      - task compose -- build --pull
+    silent: true
+
+  ####
+  ## Production build
+  ####
+  prod:build:
+    desc: Build and push docker images
+    deps: [prod:build:cpu, prod:build:gpu]
+    cmds:
+      - task: prod:build:cpu
+      - task: prod:build:gpu
+    silent: true
+
+  prod:build:cpu:
+    desc: Build and push docker images (CPU)
+    cmds:
+      - docker buildx build --tag ghcr.io/aarhusai/piper-tts:{{ .VERSION }}-cpu --tag ghcr.io/aarhusai/piper-tts:cpu --no-cache --pull --file Dockerfile .
+      - docker push {{ .IMAGE_NAME }}:{{ .VERSION }}-cpu
+      - docker push {{ .IMAGE_NAME }}:cpu
+    silent: true
+
+  prod:build:gpu:
+    desc: Build and push docker images (GPU)
+    cmds:
+      - docker buildx build --tag ghcr.io/aarhusai/piper-tts:{{ .VERSION }}-gpu --tag ghcr.io/aarhusai/piper-tts:gpu --no-cache --pull --file Dockerfile.gpu .
+      - docker push {{ .IMAGE_NAME }}:{{ .VERSION }}-gpu
+      - docker push {{ .IMAGE_NAME }}:gpu
+    silent: true
+        
+
