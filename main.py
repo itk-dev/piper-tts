@@ -113,6 +113,15 @@ else:
 # Default language if detection fails
 DEFAULT_LANGUAGE = "da"
 
+# Pre-load all voice models at startup to avoid reloading on every request
+LOADED_VOICE_MODELS = {}
+for _voice_cfg in voices_config:
+    _path = _voice_cfg["path"]
+    if _path not in LOADED_VOICE_MODELS:
+        logger.info(f"Loading voice model: {_path}")
+        LOADED_VOICE_MODELS[_path] = PiperVoice.load(_path, use_cuda=CUDA_ENABLED)
+logger.info(f"Loaded {len(LOADED_VOICE_MODELS)} voice model(s)")
+
 
 def detect_language(text):
     """
@@ -224,9 +233,13 @@ async def create_speech(
     )
 
     try:
-        # Load the voice model
-        voice_model = PiperVoice.load(voice_path, use_cuda=CUDA_ENABLED)
-        logger.debug("Voice model loaded successfully")
+        # Look up the pre-loaded voice model
+        voice_model = LOADED_VOICE_MODELS.get(voice_path)
+        if voice_model is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Voice model not found for path: {voice_path}",
+            )
 
         # Create an in-memory file-like object to store the WAV audio
         wav_buffer = io.BytesIO()
