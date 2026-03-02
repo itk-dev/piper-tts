@@ -167,7 +167,7 @@ async def create_speech(
     voice: str = Body(..., description="Select voice to use"),
     input: str = Body(..., description="The text to generate speech for"),
     response_format: str = Body(
-        "mp3", description="The format of the audio response (mp3 or wav)"
+        "mp3", description="The format of the audio response (mp3, wav, or pcm)"
     ),
     speed: float = Body(1.0, description="The speed of the generated audio"),
     auto_detect_language: bool = Body(
@@ -238,27 +238,34 @@ async def create_speech(
         # Reset the buffer position to the beginning
         wav_buffer.seek(0)
 
-        # If MP3 format is requested, convert WAV to MP3
-        if response_format.lower() == "mp3":
-            # Convert WAV to MP3 using pydub
+        fmt = response_format.lower()
+        if fmt == "mp3":
             audio = AudioSegment.from_wav(wav_buffer)
             mp3_buffer = io.BytesIO()
             audio.export(mp3_buffer, format="mp3")
-
-            # Reset the MP3 buffer position
             mp3_buffer.seek(0)
 
             return StreamingResponse(
                 mp3_buffer,
                 media_type="audio/mpeg",
-                headers={"Content-Disposition": f"attachment; filename=speech.mp3"},
+                headers={"Content-Disposition": "attachment; filename=speech.mp3"},
+            )
+        elif fmt == "pcm":
+            # Read raw PCM samples from the WAV buffer (skip the WAV header)
+            with wave.open(wav_buffer, "rb") as wav_reader:
+                pcm_data = wav_reader.readframes(wav_reader.getnframes())
+            pcm_buffer = io.BytesIO(pcm_data)
+
+            return StreamingResponse(
+                pcm_buffer,
+                media_type="audio/pcm",
+                headers={"Content-Disposition": "attachment; filename=speech.pcm"},
             )
         else:
-            logger.error(f"Speech generation failed: {str(e)}")
             return StreamingResponse(
                 wav_buffer,
                 media_type="audio/wav",
-                headers={"Content-Disposition": f"attachment; filename=speech.wav"},
+                headers={"Content-Disposition": "attachment; filename=speech.wav"},
             )
     except Exception as e:
         raise HTTPException(
